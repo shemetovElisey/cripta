@@ -8,10 +8,17 @@
 import SwiftUI
 
 struct ContentView: View {
+    @ObservedObject var viewModel = ViewModel()
+    
     var body: some View {
-        Text("Hello, world!")
-            .padding()
+        NavigationView {
+            List {
+                NavigationLink("Encript", destination: EncriptView(viewModel: viewModel))
+                NavigationLink("Decript", destination: DecriptView(viewModel: viewModel))
+            }
+        }
     }
+    
 }
 
 struct ContentView_Previews: PreviewProvider {
