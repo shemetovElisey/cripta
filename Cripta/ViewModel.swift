@@ -23,6 +23,7 @@ class ViewModel: ObservableObject {
     @Published private(set) var isInequality: Bool? = nil
     
     @Published public var decryptMessage = ""
+    @Published public var mistakeString: String = ""
     
     func buttonTouched() {
         let fileManager = ESFileManager(withProbability: probabylityFileName,
@@ -52,8 +53,17 @@ class ViewModel: ObservableObject {
         let alphabet = getCode(Converter.convertProbability(prob))
         let decryptedMessage = Converter.decryptMessage(encryptedMessage, alph: alphabet)
         
-        fileManager.writeFile(message: decryptedMessage, name: decryptFileName)
-        decryptMessage = decryptedMessage
+        fileManager.writeFile(message: decryptedMessage.toString(), name: decryptFileName)
+        decryptMessage = decryptedMessage.toString()
+        
+        let mistakePositions: [Int] = decryptedMessage
+                                        .filter({ $0.hasMistake })
+                                        .compactMap {
+                                            let symbol = $0
+                                            return decryptedMessage.firstIndex { $0 == symbol }
+                                        }
+        
+        mistakeString = mistakePositions.count > 0 ? "Порядковые номера слов с ошибкой: " + mistakePositions.map({ String($0 + 1) }).joined(separator: ", ") : "Ошибок нет"
     }
     
     private func getCode(_ alph: [Alphabet]) -> [Alphabet] {
@@ -115,140 +125,5 @@ class ViewModel: ObservableObject {
         }
         
         isInequality = result <= 1 
-    }
-}
-
-class ESFileManager {
-    private var probabilityName: String
-    private var messageName: String
-    private var encryptName: String
-    
-    enum ReturnType {
-        case probability
-        case message
-        case encrypt
-    }
-
-    init(withProbability probability: String, andMessage message: String, encrypt: String) {
-        probabilityName = probability
-        messageName = message
-        encryptName = encrypt
-    }
-    
-    private func getFileText(_ fileName: String) -> String {
-        if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-            let messageURL = dir.appendingPathComponent(fileName)
-
-            do {
-                let text = try String(contentsOf: messageURL, encoding: .utf8)
-                return text
-            } catch {
-                return ""
-            }
-        }
-        return ""
-    }
-    
-    func writeFile(message: String, name: String) {
-        if let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-            let outputURL = dir.appendingPathComponent(name)
-
-            do {
-                try message.write(to: outputURL, atomically: true, encoding: .utf8)
-            } catch { return }
-        }
-    }
-    
-    func getFile(with type: ReturnType) -> String {
-        switch type {
-        case .probability:
-            return getFileText(probabilityName)
-        case .message:
-            return getFileText(messageName)
-        case .encrypt:
-            return getFileText(encryptName)
-        }
-    }
-}
-
-struct Alphabet {
-    let id = UUID()
-    var symbol: String
-    var probability: Double
-    var code: String?
-}
-
-class Converter {
-    static let symbols = ["2", "20", "200", "0", "00", "_"]
-    
-    static func decimalToBinary(num: Double, prec: Int) -> String {
-        var binary = ""
-        var fractional = num
-        var k_prec = prec
-        
-        while k_prec != 0 {
-            fractional *= 2
-            let fractBit = Int(fractional)
-            
-            if fractBit == 1 {
-                fractional -= Double(fractBit)
-                binary.append("1")
-            } else {
-                binary.append("0")
-            }
-            
-            k_prec -= 1
-        }
-        
-        return binary
-    }
-    
-    static func convertProbability(_ str: String) -> [Alphabet] {
-        let symbols = ["2", "20", "200", "0", "00", "_"]
-        let strArray = str.split(separator: " ")
-        
-        var alphabet = [Alphabet]()
-        
-        for index in 0..<symbols.count {
-            guard index < strArray.count else { return [] }
-            alphabet.append(Alphabet(symbol: symbols[index],
-                                     probability: Double(strArray[index]) ?? 0))
-        }
-        
-        return alphabet.sorted(by: { $0.probability > $1.probability })
-    }
-    
-    static func encryptMessage(_ str: String, alph: [Alphabet]) -> String {
-        let strArray = str.split(separator: " ")
-        var result = [String]()
-        
-        for element in strArray {
-            for symbol in alph {
-                if symbol.symbol == element,
-                   let code = symbol.code {
-                    result.append(code)
-                    break
-                }
-            }
-        }
-        
-        return result.joined(separator: " ")
-    }
-    
-    static func decryptMessage(_ str: String, alph: [Alphabet]) -> String {
-        let strArray = str.split(separator: " ")
-        var result = [String]()
-        
-        for element in strArray {
-            for symbol in alph {
-                guard let code = symbol.code else { continue }
-                if code == element {
-                    result.append(symbol.symbol)
-                    break
-                }
-            }
-        }
-        
-        return result.joined(separator: " ")
     }
 }

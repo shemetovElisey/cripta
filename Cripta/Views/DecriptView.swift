@@ -28,9 +28,17 @@ struct DecriptView: View {
                 }
             }
             
+    
             Text(viewModel.decryptMessage)
+            
             Spacer()
+            
+            Text(viewModel.mistakeString)
+            
+            Spacer()
+            
         }.frame(alignment: .top)
         
     }
 }
+
